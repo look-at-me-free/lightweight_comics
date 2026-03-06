@@ -1,11 +1,7 @@
 {
   "works": [
     {
-      "slug": "Naruto",
-      "label": "Naruto"
-    },
-    {
-      "slug": "new_comic",
+      "slug": "index",
       "label": "Volume 1"
     }
   ]
