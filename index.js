@@ -120,7 +120,7 @@
 
     nav.innerHTML = WORKS.map(work => {
       const active = work.slug === CURRENT_SLUG ? " active" : "";
-      const label = work.label ? work.label : slugToTitle(work.slug);
+      const label = slugToTitle(work.slug);
 
       return `
         <button
