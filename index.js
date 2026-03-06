@@ -1,8 +1,12 @@
 (() => {
-  // ====== DATA ======
-  const DATA_FILE = "index.json";
+  // ====== DATA / ROUTING ======
+  const WORKS_FILE = "works.json";
+  const WORKS_DIR = "works";
+
+  let WORKS = [];
   let ITEMS = [];
   let WORK_TITLE = "";
+  let CURRENT_SLUG = "";
 
   // ====== AD ZONES ======
   const BETWEEN_ZONE = "5865236";
@@ -18,7 +22,6 @@
   const OPEN_FIRST_ON_LOAD = true;
   const CLOSE_OTHERS_ON_OPEN = true;
   const LAZY_ADS = true;
-
   const SHOW_FEATURED_AD_ABOVE_CHAPTERS = false;
 
   // ====== SCALE ======
@@ -32,6 +35,7 @@
   const SEARCH_MAX_RESULTS = 40;
   const SEARCH_DEBOUNCE_MS = 90;
 
+  // ====== DOM HELPERS ======
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
@@ -44,24 +48,83 @@
       .replaceAll("'", "&#39;");
   }
 
-  async function loadData() {
-    const res = await fetch(DATA_FILE, { cache: "no-store" });
-    if (!res.ok) {
-      throw new Error(`Failed to load ${DATA_FILE} (${res.status})`);
-    }
+  // ====== ROUTING ======
+  function getPathSlug() {
+    const path = window.location.pathname.replace(/^\/+|\/+$/g, "");
+    return path || "index";
+  }
 
-    const data = await res.json();
-    WORK_TITLE = data.work_title || "";
+  function setPathSlug(slug) {
+    const next = slug === "index" ? "/" : `/${encodeURIComponent(slug)}`;
+    const current = window.location.pathname + window.location.search + window.location.hash;
+    if (current !== next) {
+      history.pushState({}, "", next);
+    }
+  }
+
+  function getWorkJsonPath(slug) {
+    return `${WORKS_DIR}/${slug}.json`;
+  }
+
+  async function fetchJson(path) {
+    const res = await fetch(path, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to load ${path} (${res.status})`);
+    }
+    return res.json();
+  }
+
+  async function loadWorksManifest() {
+    const data = await fetchJson(WORKS_FILE);
+    WORKS = Array.isArray(data.works) ? data.works : [];
+  }
+
+  async function loadWorkBySlug(slug) {
+    const data = await fetchJson(getWorkJsonPath(slug));
+
+    CURRENT_SLUG = slug;
+    WORK_TITLE = data.work_title || slug;
     ITEMS = Array.isArray(data.items) ? data.items : [];
 
-    const workTitleEl = $("#workTitle");
-    if (workTitleEl) workTitleEl.textContent = WORK_TITLE;
+    renderedUntil = 0;
+    SEARCH_INDEX = null;
+
+    const heroTitle = $(".hero-title");
+    if (heroTitle) heroTitle.textContent = WORK_TITLE;
 
     const meta = $("#meta");
     if (meta) meta.textContent = `Items: ${ITEMS.length}`;
+
+    const input = $("#q");
+    if (input) input.value = "";
+
+    const nav = $("#nav");
+    if (nav) {
+      nav.innerHTML = "";
+      nav.style.display = "none";
+    }
   }
 
-  // --- Drive URL helpers ---
+  function renderWorksNav() {
+    const nav = $("#worksNav");
+    if (!nav) return;
+
+    nav.innerHTML = WORKS.map(work => {
+      const active = work.slug === CURRENT_SLUG ? " active" : "";
+      return `
+        <button
+          class="work-chip${active}"
+          type="button"
+          data-work-slug="${escapeHtml(work.slug)}"
+          aria-current="${work.slug === CURRENT_SLUG ? "page" : "false"}"
+        >
+          ${escapeHtml(work.label)}
+        </button>
+      `;
+    }).join("");
+  }
+
+  // ====== DRIVE URL HELPERS ======
   function driveFileIdFromUrl(url) {
     try {
       const u = new URL(url);
@@ -184,7 +247,7 @@
     return wrap;
   }
 
-  // ====== Cards ======
+  // ====== CARDS ======
   function makeDetails(item, idx) {
     const d = document.createElement("details");
     d.className = "card";
@@ -193,7 +256,6 @@
 
     const title = escapeHtml(item.title || `Item ${idx + 1}`);
     const workTitle = WORK_TITLE ? escapeHtml(WORK_TITLE) : "";
-
     const openUrl = item.url;
     const embedUrl = toDrivePreview(item.url);
 
@@ -223,7 +285,7 @@
     return d;
   }
 
-  // ====== Smooth scroll ======
+  // ====== SMOOTH SCROLL ======
   function easeOutCubic(t) {
     return 1 - Math.pow(1 - t, 3);
   }
@@ -240,7 +302,6 @@
     const base = 650;
     const extra = Math.min(850, Math.abs(distance) * 0.25);
     const duration = Math.min(maxMs, base + extra);
-
     const start = performance.now();
 
     function step(now) {
@@ -261,7 +322,7 @@
     else window.scrollTo(0, y);
   }
 
-  // ====== Chunked rendering ======
+  // ====== CHUNKED RENDERING ======
   let renderedUntil = 0;
   let chunkSentinelObserver = null;
 
@@ -283,7 +344,12 @@
 
   function ensureChunkObserver(container) {
     const sentinel = $("#chunkSentinel");
-    if (!sentinel || chunkSentinelObserver) return;
+    if (!sentinel) return;
+
+    if (chunkSentinelObserver) {
+      chunkSentinelObserver.disconnect();
+      chunkSentinelObserver = null;
+    }
 
     chunkSentinelObserver = new IntersectionObserver((entries) => {
       for (const entry of entries) {
@@ -306,7 +372,7 @@
     chunkSentinelObserver.observe(sentinel);
   }
 
-  // ====== Open / Embed ======
+  // ====== OPEN / EMBED ======
   function openDetails(d) {
     if (!d) return;
     d.open = true;
@@ -360,7 +426,7 @@
     if (LAZY_ADS) setTimeout(serveAds, 60);
   }
 
-  // ====== Toggle handler ======
+  // ====== TOGGLE HANDLER ======
   document.addEventListener("toggle", (e) => {
     const d = e.target;
     if (!(d instanceof HTMLDetailsElement)) return;
@@ -378,7 +444,9 @@
 
       const isMobile = window.matchMedia("(max-width: 900px)").matches;
       if (!isMobile && CLOSE_OTHERS_ON_OPEN) {
-        $$("details.card[open]").forEach(x => { if (x !== d) x.open = false; });
+        $$("details.card[open]").forEach(x => {
+          if (x !== d) x.open = false;
+        });
       }
 
       if (!content.querySelector("iframe")) {
@@ -397,8 +465,26 @@
     }
   }, true);
 
-  // ====== Click handling ======
+  // ====== CLICK HANDLING ======
   document.addEventListener("click", (e) => {
+    const workBtn = e.target.closest("[data-work-slug]");
+    if (workBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const slug = workBtn.dataset.workSlug;
+      if (!slug || slug === CURRENT_SLUG) return;
+
+      setPathSlug(slug);
+
+      switchWork(slug).catch(err => {
+        console.error(err);
+        const meta = $("#meta");
+        if (meta) meta.textContent = "Failed to load selected work.";
+      });
+      return;
+    }
+
     const btn = e.target.closest(".expbtn");
     if (btn) {
       const d = btn.closest("details");
@@ -434,7 +520,7 @@
     }
   });
 
-  // ====== Fuzzy search ======
+  // ====== SEARCH ======
   function norm(s) {
     return String(s || "")
       .toLowerCase()
@@ -496,6 +582,7 @@
   }
 
   let SEARCH_INDEX = null;
+  let searchWired = false;
 
   function buildSearchIndex() {
     if (SEARCH_INDEX) return SEARCH_INDEX;
@@ -599,7 +686,36 @@
     });
   }
 
+  function updateSearchResults(query) {
+    const meta = $("#meta");
+    const nav = $("#nav");
+
+    if (!query.trim()) {
+      if (nav) {
+        nav.innerHTML = "";
+        nav.style.display = "none";
+      }
+      if (meta) meta.textContent = `Items: ${ITEMS.length}`;
+      return;
+    }
+
+    const hits = runSearch(query);
+    if (meta) meta.textContent = hits.length ? `Matches: ${hits.length}` : "No matches.";
+
+    if (nav) {
+      nav.innerHTML = hits.map(h => {
+        const label = escapeHtml(h.title);
+        const tag = h.work_title ? `<span class="nav-id">${escapeHtml(h.work_title)}</span>` : "";
+        return `<a href="#item-${h.i}" data-i="${h.i}">${label}${tag}</a>`;
+      }).join("");
+      nav.style.display = hits.length ? "flex" : "none";
+    }
+  }
+
   function wireSearchUI() {
+    if (searchWired) return;
+    searchWired = true;
+
     const input = $("#q");
     const meta = $("#meta");
     const nav = $("#nav");
@@ -614,7 +730,10 @@
     if (clearBtn) {
       clearBtn.addEventListener("click", () => {
         if (input) input.value = "";
-        if (nav) nav.style.display = "none";
+        if (nav) {
+          nav.innerHTML = "";
+          nav.style.display = "none";
+        }
         if (meta) meta.textContent = `Items: ${ITEMS.length}`;
       });
     }
@@ -622,27 +741,11 @@
     if (!input) return;
 
     let tmr = null;
+
     input.addEventListener("input", () => {
       clearTimeout(tmr);
       tmr = setTimeout(() => {
-        const q = input.value || "";
-        if (!q.trim()) {
-          if (nav) nav.style.display = "none";
-          if (meta) meta.textContent = `Items: ${ITEMS.length}`;
-          return;
-        }
-
-        const hits = runSearch(q);
-        if (meta) meta.textContent = hits.length ? `Matches: ${hits.length}` : "No matches.";
-
-        if (nav) {
-          nav.innerHTML = hits.map(h => {
-            const label = escapeHtml(h.title);
-            const tag = h.work_title ? `<span class="nav-id">${escapeHtml(h.work_title)}</span>` : "";
-            return `<a href="#item-${h.i}" data-i="${h.i}">${label}${tag}</a>`;
-          }).join("");
-          nav.style.display = hits.length ? "flex" : "none";
-        }
+        updateSearchResults(input.value || "");
       }, SEARCH_DEBOUNCE_MS);
     });
 
@@ -666,7 +769,7 @@
     }
   }
 
-  // ====== Render ======
+  // ====== RENDER ======
   function render() {
     const container = $("#container");
     if (!container) return;
@@ -708,13 +811,36 @@
         cards[cards.length - 1].open = true;
       }
     }
+
+    if (LAZY_ADS) {
+      setTimeout(serveAds, 80);
+    }
   }
 
+  async function switchWork(slug) {
+    await loadWorkBySlug(slug);
+    renderWorksNav();
+    render();
+
+    const meta = $("#meta");
+    if (meta) meta.textContent = `Items: ${ITEMS.length}`;
+  }
+
+  // ====== BOOT ======
   async function boot() {
     if (window.__ARCHIVE_BOOTED__) return;
     window.__ARCHIVE_BOOTED__ = true;
 
-    await loadData();
+    await loadWorksManifest();
+
+    let slug = getPathSlug();
+    if (!WORKS.some(w => w.slug === slug)) {
+      slug = WORKS[0]?.slug || "index";
+      setPathSlug(slug);
+    }
+
+    await loadWorkBySlug(slug);
+    renderWorksNav();
     render();
     wireSearchUI();
 
@@ -725,6 +851,18 @@
       initAllAdsNow();
     }
   }
+
+  window.addEventListener("popstate", () => {
+    const slug = getPathSlug();
+
+    if (!WORKS.some(w => w.slug === slug)) return;
+
+    switchWork(slug).catch(err => {
+      console.error(err);
+      const meta = $("#meta");
+      if (meta) meta.textContent = "Failed to load archive.";
+    });
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
