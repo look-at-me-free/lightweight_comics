@@ -1,7 +1,8 @@
 {
   "works": [
-    { "slug": "index", "label": "Full Manga Series" },
-    { "slug": "juju_story", "label": "Juju Story" },
-    { "slug": "archive_one", "label": "Archive One" }
+    {
+      "slug": "index",
+      "label": "Volume 1"
+    }
   ]
 }
