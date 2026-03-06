@@ -48,6 +48,13 @@
       .replaceAll("'", "&#39;");
   }
 
+  function slugToTitle(slug) {
+    return String(slug || "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, c => c.toUpperCase())
+      .trim();
+  }
+
   // ====== ROUTING ======
   function getPathSlug() {
     const path = window.location.pathname.replace(/^\/+|\/+$/g, "");
@@ -83,14 +90,16 @@
     const data = await fetchJson(getWorkJsonPath(slug));
 
     CURRENT_SLUG = slug;
-    WORK_TITLE = data.work_title || slug;
+    WORK_TITLE = slugToTitle(slug);
     ITEMS = Array.isArray(data.items) ? data.items : [];
 
     renderedUntil = 0;
     SEARCH_INDEX = null;
 
-    const heroTitle = $(".hero-title");
-    if (heroTitle) heroTitle.textContent = WORK_TITLE;
+    const currentWorkTitle = $("#currentWorkTitle");
+    if (currentWorkTitle) {
+      currentWorkTitle.textContent = WORK_TITLE || "Expand • Read • Scroll";
+    }
 
     const meta = $("#meta");
     if (meta) meta.textContent = `Items: ${ITEMS.length}`;
@@ -111,6 +120,8 @@
 
     nav.innerHTML = WORKS.map(work => {
       const active = work.slug === CURRENT_SLUG ? " active" : "";
+      const label = work.label ? work.label : slugToTitle(work.slug);
+
       return `
         <button
           class="work-chip${active}"
@@ -118,7 +129,7 @@
           data-work-slug="${escapeHtml(work.slug)}"
           aria-current="${work.slug === CURRENT_SLUG ? "page" : "false"}"
         >
-          ${escapeHtml(work.label)}
+          ${escapeHtml(label)}
         </button>
       `;
     }).join("");
