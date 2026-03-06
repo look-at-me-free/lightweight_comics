@@ -1,10 +1,6 @@
 {
   "works": [
     {
-      "slug": "index",
-      "label": "Volume 1"
-    },
-    {
       "slug": "Naruto",
       "label": "Volume 1"
     }
