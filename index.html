@@ -1,6 +1,3 @@
-
-
-<!-- index.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -28,8 +25,12 @@
 
 *{ box-sizing:border-box; }
 
-body{
+html, body{
   margin:0;
+  min-height:100%;
+}
+
+body{
   background:
     radial-gradient(900px 500px at 15% 0%, rgba(255,255,255,.06), transparent 60%),
     radial-gradient(800px 550px at 85% 15%, rgba(255,255,255,.05), transparent 55%),
@@ -45,7 +46,9 @@ body{
 .doc,
 .kbd,
 .smallbtn,
-.search input{
+.search input,
+.work-chip,
+.works-strip-label{
   font-family:"Pangolin", cursive;
   font-weight:400;
 }
@@ -73,9 +76,56 @@ body{
   font-size:14px;
 }
 
+/* Work strip */
+.works-strip-wrap{
+  max-width:1200px;
+  margin:14px auto 0;
+  padding:0 16px;
+}
+
+.works-strip-label{
+  text-align:center;
+  color:var(--muted);
+  font-size:13px;
+  margin:0 0 8px;
+}
+
+.works-strip{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:center;
+}
+
+.work-chip{
+  appearance:none;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.06);
+  color:var(--ink);
+  padding:8px 14px;
+  border-radius:999px;
+  cursor:pointer;
+  font-size:14px;
+  line-height:1;
+  transition:transform .12s ease, background .12s ease, border-color .12s ease;
+}
+
+.work-chip:hover{
+  background:rgba(255,255,255,.12);
+  transform:translateY(-1px);
+}
+
+.work-chip.active{
+  background:rgba(255,255,255,.18);
+  border-color:rgba(255,255,255,.28);
+  box-shadow:0 10px 30px rgba(0,0,0,.28);
+}
+
+/* Toolbar */
 .toolbar{
   max-width:1100px;
-  margin:10px auto 0;
+  margin:12px auto 0;
   padding:0 16px;
   display:flex;
   gap:10px;
@@ -103,13 +153,13 @@ body{
   color:var(--muted);
   font-size:12px;
   text-align:center;
-  margin:8px 0 0;
+  margin:10px 0 0;
 }
 
-/* Top search */
+/* Search */
 .search-zone{
   max-width:1100px;
-  margin:10px auto 0;
+  margin:12px auto 0;
   padding:0 16px 6px;
 }
 
@@ -181,7 +231,7 @@ body{
 /* Top banner */
 .top-ad{
   max-width:1100px;
-  margin:10px auto 0;
+  margin:12px auto 0;
   padding:8px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.16);
@@ -267,6 +317,13 @@ summary::-webkit-details-marker{ display:none; }
   font-size:16px;
   letter-spacing:.2px;
   line-height:1.15;
+}
+
+.id{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:12px;
+  font-family:"Pangolin", cursive;
 }
 
 /* Buttons */
@@ -391,7 +448,7 @@ iframe{
   align-items:center;
 }
 
-/* 24-ad block */
+/* End ads */
 .end-ads{
   margin:18px 0 18px;
   padding:16px;
@@ -425,7 +482,7 @@ iframe{
   align-items:center;
 }
 
-/* Long endcap ad */
+/* Endcap */
 .endcap-ad{
   max-width:1100px;
   margin:18px auto 70px;
@@ -495,6 +552,15 @@ iframe{
   .layout{
     padding:8px 12px 18px;
   }
+
+  .works-strip{
+    gap:8px;
+  }
+
+  .work-chip{
+    font-size:13px;
+    padding:8px 12px;
+  }
 }
 </style>
 </head>
@@ -505,12 +571,19 @@ iframe{
   <h1 class="hero-title">Full Manga Series</h1>
   <p class="hero-sub">Expand • Read • Scroll</p>
 
+  <section class="works-strip-wrap" aria-label="Works navigation">
+    <p class="works-strip-label">Works</p>
+    <nav class="works-strip" id="worksNav">
+      <!-- index.js fills this from works.json -->
+    </nav>
+  </section>
+
   <div class="toolbar">
     <button class="smallbtn" id="openFirstTop" type="button">First Chapter</button>
     <button class="smallbtn" id="openLatestTop" type="button">Latest Chapter</button>
   </div>
 
-  <div class="meta" id="meta"></div>
+  <div class="meta" id="meta">Loading…</div>
 
   <section class="search-zone" id="searchSection">
     <div class="search-label">SEARCH BAR</div>
@@ -530,7 +603,7 @@ iframe{
 </header>
 
 <div class="layout">
-  <aside class="rail">
+  <aside class="rail" aria-label="Left ads">
     <div class="rail-stack" id="leftRail">
       <div class="exo-slot" data-zone="5865238"></div>
     </div>
@@ -540,7 +613,7 @@ iframe{
     <div id="container"></div>
   </main>
 
-  <aside class="rail">
+  <aside class="rail" aria-label="Right ads">
     <div class="rail-stack" id="rightRail">
       <div class="exo-slot" data-zone="5865240"></div>
     </div>
