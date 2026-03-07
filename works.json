@@ -1,6 +1,10 @@
 {
   "works": [
     {
+      "slug": "Dragon Ball Colored",
+      "label": "Volume 1"
+    },
+    {
       "slug": "Naruto",
       "label": "Volume 1"
     }
